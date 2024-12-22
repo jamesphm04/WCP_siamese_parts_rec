@@ -1,0 +1,216 @@
+{
+	"x-generator": "NSwag v13.0.4.0 (NJsonSchema v10.1.21.0 (Newtonsoft.Json v11.0.0.0))",
+	"swagger": "2.0",
+	"info": {
+		"title": "WCP Workflow API",
+		"version": "1.0.0"
+	},
+	"host": "localhost",
+	"basePath": "/wcp",
+	"schemes": [
+		"https"
+	],
+	"consumes": [
+		"application/json"
+	],
+	"produces": [
+		"application/json"
+	],
+	"paths": {
+		"/api/auth/authenticate": {
+			"post": {
+				"tags": [
+					"AuthApi"
+				],
+				"operationId": "AuthApi_Authenticate",
+				"parameters": [
+					{
+						"name": "request",
+						"in": "body",
+						"required": true,
+						"schema": {
+							"$ref": "#/definitions/GetApplicationQuery"
+						},
+						"x-nullable": true
+					}
+				],
+				"responses": {
+					"200": {
+						"x-nullable": true,
+						"description": "",
+						"schema": {
+							"type": "file"
+						}
+					}
+				}
+			}
+		},
+		"/api/images/search": {
+			"post": {
+				"tags": [
+					"ImagesApi"
+				],
+				"summary": "Searches workflow stock details by Part Type and IC number",
+				"operationId": "ImagesApi_SearchStockByIcPartType",
+				"parameters": [
+					{
+						"name": "request",
+						"in": "body",
+						"required": true,
+						"schema": {
+							"$ref": "#/definitions/SearchStockByIcPartTypeRequest"
+						},
+						"x-nullable": true
+					}
+				],
+				"responses": {
+					"200": {
+						"x-nullable": true,
+						"description": "",
+						"schema": {
+							"type": "array",
+							"items": {
+								"$ref": "#/definitions/SearchStockByIcPartTypeResponse"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/images/{imageId}": {
+			"get": {
+				"tags": [
+					"ImagesApi"
+				],
+				"summary": "Retrieves matching image",
+				"operationId": "ImagesApi_SearchImage",
+				"parameters": [
+					{
+						"type": "integer",
+						"name": "imageId",
+						"in": "path",
+						"required": true,
+						"format": "int32",
+						"x-nullable": false
+					}
+				],
+				"responses": {
+					"200": {
+						"x-nullable": true,
+						"description": "",
+						"schema": {
+							"$ref": "#/definitions/ImageSearchResponse"
+						}
+					}
+				}
+			}
+		},
+		"/api/images/mark-checked/{stockId}": {
+			"put": {
+				"tags": [
+					"ImagesApi"
+				],
+				"summary": "Marks a stock item as checked for damages and incorrect labelling",
+				"operationId": "ImagesApi_MarkStockAsChecked",
+				"parameters": [
+					{
+						"type": "integer",
+						"name": "stockId",
+						"in": "path",
+						"required": true,
+						"format": "int32",
+						"x-nullable": false
+					}
+				],
+				"responses": {
+					"200": {
+						"x-nullable": false,
+						"description": "",
+						"schema": {
+							"type": "boolean"
+						}
+					}
+				}
+			}
+		}
+	},
+	"definitions": {
+		"GetApplicationQuery": {
+			"type": "object",
+			"properties": {
+				"ApplicationName": {
+					"type": "string"
+				},
+				"ApplicationSecret": {
+					"type": "string"
+				}
+			}
+		},
+		"SearchStockByIcPartTypeResponse": {
+			"type": "object",
+			"required": [
+				"StockId",
+				"AvailableInStock",
+				"WasItemCheckedForDamagesAndIncorrectLabelling"
+			],
+			"properties": {
+				"StockId": {
+					"type": "integer",
+					"format": "int32"
+				},
+				"StockNumber": {
+					"type": "string"
+				},
+				"FinalStatusCode": {
+					"type": "string"
+				},
+				"AvailableInStock": {
+					"type": "boolean"
+				},
+				"ImageIDs": {
+					"type": "array",
+					"items": {
+						"type": "integer",
+						"format": "int32"
+					}
+				},
+				"WasItemCheckedForDamagesAndIncorrectLabelling": {
+					"type": "boolean"
+				}
+			}
+		},
+		"SearchStockByIcPartTypeRequest": {
+			"type": "object",
+			"properties": {
+				"PartTypeCode": {
+					"type": "string"
+				},
+				"InterchangeCode": {
+					"type": "string"
+				},
+				"IncludeItemsCheckedForDamagesAndIncorrectLabelling": {
+					"type": "boolean"
+				}
+			}
+		},
+		"ImageSearchResponse": {
+			"type": "object",
+			"required": [
+				"ImageId"
+			],
+			"properties": {
+				"ImageId": {
+					"type": "integer",
+					"format": "int32"
+				},
+				"Data": {
+					"type": "string",
+					"format": "byte"
+				},
+				"OriginalFileName": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}
