@@ -32,13 +32,12 @@ class SiameseNetwork(nn.Module):
         x = self.feature_extractor(x)
         x = x.view(x.size(0), -1)
         x = self.embedding(x)
+        x = nn.functional.normalize(x, p=2, dim=1)
         return x
     
-    def forward(self, x1, x2):
-        x1 = self.forward_one(x1)
-        x2 = self.forward_one(x2)
-        
-        # compute similarity score
-        x = torch.abs(x1 - x2)
-        out = self.fc(x)
-        return out
+    def forward(self, anchor, positive, negative):
+        """Forward pass for triplet input"""
+        anchor_emb = self.forward_one(anchor)
+        positive_emb = self.forward_one(positive)
+        negative_emb = self.forward_one(negative)
+        return anchor_emb, positive_emb, negative_emb

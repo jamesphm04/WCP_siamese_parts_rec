@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from typing import Tuple
 import random
+import torch.nn as nn
 
 class AutoPartsDataset(Dataset):
     def __init__(self, root_dir: str, transform=None):
@@ -21,43 +22,63 @@ class AutoPartsDataset(Dataset):
         self.classes = os.listdir(root_dir)
         self.class_to_idx = {part: idx for idx, part in enumerate(self.classes)}
         
-        # Get all image paths and their labels
-        self.images = []
-        for class_name in self.classes:
+        # Create class-to-images mapping
+        self.class_to_images = {}
+        self.classes = []
+        
+        # Scan directory
+        for class_name in os.listdir(root_dir):
             class_path = os.path.join(root_dir, class_name)
-            for img_name in os.listdir(class_path):
-                img_path = os.path.join(class_path, img_name)
-                self.images.append((img_path, class_name))
+            if os.path.isdir(class_path):
+                self.classes.append(class_name)
+                self.class_to_images[class_name] = [
+                    os.path.join(class_path, img_name)
+                    for img_name in os.listdir(class_path)
+                    if img_name.lower().endswith(('.png', '.jpg', '.jpeg'))
+                ]
+        
+        # Create triplets
+        self.triplets = self._generate_triplets()
                 
-    def len(self):
-        return len(self.images)
+    def __len__(self):
+        return len(self.triplets)
+
+    def _generate_triplets(self):
+        triplets = []
+        
+        for anchor_class in self.classes:
+            anchor_images = self.class_to_images[anchor_class]
+            
+            for anchor_img in anchor_images:
+                # get positive image from the same class
+                positive_images = [img for img in anchor_images if img != anchor_img]
+                if not positive_images: 
+                    continue
+                positive_img = random.choice(positive_images)
+                
+                # get negative image from a different class
+                
+                negative_class = random.choice([c for c in self.classes if c != anchor_class])
+                negative_img = random.choice(self.class_to_images[negative_class])
+                
+                triplets.append((anchor_img, positive_img, negative_img))
+                
+        return triplets
     
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
-        img1_path, class1 = self.images[idx]
+        anchor_img_path, positive_img_path, negative_img_path = self.triplets[idx]
         
-        # randomly decide if we want a matching pair (1) or non-matching pair (0)
-        should_match = random.random() > 0.5
-        
-        if should_match:
-            # get another image from the same class
-            possible_matches = [(p, c) for p, c in self.images if c == class1 and p != img1_path]
-            img2_path, class2 = random.choice(possible_matches)
-            target = 1.0
-        else:
-            # get another image from a different class
-            possible_matches = [(p, c) for p, c in self.images if c != class1]
-            img2_path, class2 = random.choice(possible_matches)
-            target = 0.0
-            
         # load and transform images 
-        img1 = Image.open(img1_path).convert('RGB')
-        img2 = Image.open(img2_path).convert('RGB')
+        anchor_img = Image.open(anchor_img_path).convert('RGB')
+        positive_img = Image.open(positive_img_path).convert('RGB')
+        negative_img = Image.open(negative_img_path).convert('RGB')
         
         if self.transform:
-            img1 = self.transform(img1)
-            img2 = self.transform(img2)
+            anchor_img = self.transform(anchor_img)
+            positive_img = self.transform(positive_img)
+            negative_img = self.transform(negative_img)
             
-        return img1, img2, torch.tensor(target, dtype=torch.float32), torch.tensor([self.class_to_idx[class1], self.class_to_idx[class2]])
+        return anchor_img, positive_img, negative_img
     
 def get_data_loaders(train_dir: str, val_dir: str, batch_size: int = 32, num_workers: int = 4) -> Tuple[DataLoader, DataLoader]:
     train_dataset = AutoPartsDataset(train_dir)
@@ -78,4 +99,15 @@ def get_data_loaders(train_dir: str, val_dir: str, batch_size: int = 32, num_wor
     )
     
     return train_loader, val_loader
+
+class TripletLoss(nn.Module):
+    def __init__(self, margin=1.0):
+        super(TripletLoss, self).__init__()
+        self.margin = margin
         
+    def forward(self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor) -> torch.Tensor:
+        distance_positive = torch.nn.functional.pairwise_distance(anchor, positive, p=2)
+        distance_negative = torch.nn.functional.pairwise_distance(anchor, negative, p=2)
+        
+        losses = torch.nn.functional.relu(distance_positive - distance_negative + self.margin)
+        return losses.mean()
