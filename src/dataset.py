@@ -8,7 +8,7 @@ import random
 import torch.nn as nn
 
 class AutoPartsDataset(Dataset):
-    def __init__(self, root_dir: str, transform=None):
+    def __init__(self, root_dir: str, transform=None, is_train=False):
         self.root_dir = root_dir
         self.transform = transform or transforms.Compose(
             [
@@ -17,6 +17,14 @@ class AutoPartsDataset(Dataset):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ]
         )
+        
+        if is_train:
+            self.transform = transforms.Compose([
+            self.transform,
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(10),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+            ])
         
         # Get all classes (part types)
         self.classes = os.listdir(root_dir)
@@ -81,7 +89,7 @@ class AutoPartsDataset(Dataset):
         return anchor_img, positive_img, negative_img
     
 def get_data_loaders(train_dir: str, val_dir: str, batch_size: int = 32, num_workers: int = 4) -> Tuple[DataLoader, DataLoader]:
-    train_dataset = AutoPartsDataset(train_dir)
+    train_dataset = AutoPartsDataset(train_dir, is_train=True)
     val_dataset = AutoPartsDataset(val_dir)
     
     train_loader = DataLoader(
